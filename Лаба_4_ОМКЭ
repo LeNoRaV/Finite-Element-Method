@@ -1,0 +1,301 @@
+#include <iostream>
+#include <map>
+#include <math.h>
+using namespace std;
+
+void init_B(float B[4][3][3], int* Y, int* X, int z) {
+	float b[3]{ Y[1] - Y[2], Y[2] - Y[0], Y[0] - Y[1] };
+	float c[3]{ X[2] - X[1], X[0] - X[2], X[1] - X[0] };
+
+	for (int i = 0; i < 3; i++) {
+		for (int j = 0; j < 3; j++) {
+			B[z][i][j] = b[i] * b[j] + c[i] * c[j];
+		}
+	}
+}
+float f(int n) { //factorial
+	int res = 1;
+	for (int i = 1; i <= n; i++) {
+		res = res * i;
+	}
+	return res;
+}
+
+float func(int al, int bet) {
+	return f(al)*f(bet)/f(al+bet+1);
+}
+
+void init_L(float L[4][3][3], int alpha, int beta, int z) {
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+			L[z][i][j] = 0;
+	}
+
+	L[z][alpha - 1][alpha - 1] = func(2,0);
+	L[z][alpha - 1][beta - 1] = func(1, 1);
+	L[z][beta - 1][alpha - 1] = func(1, 1);
+	L[z][beta - 1][beta - 1] = func(0, 2);
+}
+
+void init_l(float L[4][3], int alpha, int beta, int z) {
+	for (int i = 0; i < 3; i++)
+	{
+		L[z][i] = 0;
+	}
+
+	L[z][alpha - 1] = func(1, 0);
+	L[z][beta - 1] = func(0, 1);
+}
+
+void print_m(float Matrix[4][3][3], int z) // печать матрицы
+{
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+			std::cout << Matrix[z][i][j] << "\t";
+		std::cout << std::endl;
+	}
+}
+
+void print_v(float Matrix[4][3], int z) 
+{
+	for (int i = 0; i < 3; i++)
+	{
+		std::cout << Matrix[z][i] << "\t";
+		std::cout << std::endl;
+	}
+}
+void solveLinearSystem(float A[6][6], float b[6], float x[6]) {
+	int n = 6;
+
+	// Прямой ход метода Гаусса
+	for (int i = 0; i < n; i++) {
+		// Поиск максимального элемента в столбце i-ой строки
+		int maxRow = i;
+		for (int j = i + 1; j < n; j++) {
+			if (abs(A[j][i]) > abs(A[maxRow][i])) {
+				maxRow = j;
+			}
+		}
+
+		// Перестановка строк, если найденная максимальная строка не совпадает с текущей
+		if (maxRow != i) {
+			swap(A[i], A[maxRow]);
+			swap(b[i], b[maxRow]);
+		}
+
+		// Приведение строки i к треугольному виду
+		for (int j = i + 1; j < n; j++) {
+			float ratio = A[j][i] / A[i][i];
+			for (int k = i; k < n; k++) {
+				A[j][k] -= ratio * A[i][k];
+			}
+			b[j] -= ratio * b[i];
+		}
+	}
+
+	// Обратный ход метода Гаусса
+	for (int i = n - 1; i >= 0; i--) {
+		float sum = 0.0;
+		for (int j = i + 1; j < n; j++) {
+			sum += A[i][j] * x[j];
+		}
+		x[i] = (b[i] - sum) / A[i][i];
+	}
+}
+
+void transp(float Matrix[6][6], int n_, int m_) // транспонирование матрицы
+{
+	float Matrix2[6][6];
+	for (int i = 0; i < m_; i++)
+		for (int j = 0; j < n_; j++)
+			Matrix2[i][j] = Matrix[j][i];
+	int temp = n_;
+	n_ = m_;
+	m_ = temp;
+	Matrix = Matrix2;
+}
+
+void MatrMultiply(float matrix[6][6], float vector[6], float* res) //умножение матрицы на вектор
+{
+	for (int i = 0; i < 6; i++)
+	{
+		float temp = 0;
+		for (int j = 0; j < 6; j++)
+		{
+			temp += matrix[i][j] * vector[j];
+		}
+		res[i] = temp;
+	}
+}
+
+int main() {
+	float l1 = 2;
+	float l2 = 2 * sqrt(2);
+	float S = 2;
+	float lg = 10;
+	float Tg = 40;
+	float k = 75;
+	float q = 150;
+	float t = 1;
+
+	//triengles
+	int X[4][3]{ {0,2,0}, {2,0,2}, {2,4,2}, {4,2,4} };
+	int Y[4][3]{ {0,0,2}, {2,2,0}, {0,0,2}, {2,2,0} };
+	int gas[5][2]{ {0,0}, {1,2}, {0,0}, {1,2}, {1,3} };
+
+	float K[4][3][3];
+	float B[4][3][3];
+	float P[4][3][3];
+	float L[4][3][3];
+
+	float l[4][3];
+	float Pq[4][3];
+	float Pg[4][3];
+
+	float K_glob[6][6];
+	float P_glob[6];
+
+	for (int i = 0; i < 6; i++)
+	{
+		for (int j = 0; j < 6; j++) {
+			K_glob[i][j] = 0;
+		}
+	}
+
+	for (int i = 0; i < 6; i++)
+	{
+		P_glob[i] = 0;
+	}
+
+	for (int z = 0; z < 4; z++) {
+		init_B(B, Y[0], X[0], z);
+
+		for (int i = 0; i < 3; i++)
+		{
+			for (int j = 0; j < 3; j++) {
+				K[z][i][j] = k * t / 4 / S * B[z][i][j];
+			}
+		}
+		std::cout << "z = "<< z << " matrix K \n";
+		print_m(K,z);
+
+		init_L(L, gas[z][0], gas[z][1], z);
+		for (int i = 0; i < 3; i++)
+		{
+			for (int j = 0; j < 3; j++) {
+				P[z][i][j] = lg * t * L[z][i][j] * l1;
+			}
+		}
+
+		if (z == 3) {
+			init_L(L, gas[z + 1][0], gas[z + 1][1], z);
+			for (int i = 0; i < 3; i++)
+			{
+				for (int j = 0; j < 3; j++) {
+					P[z][i][j] += lg * t * L[z][i][j] * l1;
+				}
+			}
+		}
+		std::cout << " matrix P \n";
+		print_m(P, z);
+
+		for (int i = 0; i < 3; i++)
+		{
+			for (int j = 0; j < 3; j++) {
+				K[z][i][j] += P[z][i][j];
+			}
+		}
+		std::cout << " matrix K new \n";
+		print_m(K, z);
+
+		for (int i = 0; i < 3; i++)
+		{
+			Pq[z][i] = 0;
+		}
+
+		init_l(l, 1, 3, 0);
+		for (int i = 0; i < 3; i++)
+		{
+			Pq[0][i] = q * t * l[0][i] * l1;
+		}
+		std::cout << " matrix Pq \n";
+		print_v(Pq, z);
+
+		init_l(l, gas[z][0], gas[z][1], z);
+		for (int i = 0; i < 3; i++)
+		{
+			Pg[z][i] = lg * Tg * t * l[z][i] * l1;
+		}
+		if (z == 3) {
+			init_l(l, gas[z + 1][0], gas[z + 1][1], z);
+			for (int i = 0; i < 3; i++)
+			{
+				Pg[z][i] += lg * Tg * t * l[z][i] * l1;
+			}
+		}
+		std::cout << " matrix Pg \n";
+		print_v(Pg, z);
+
+	}
+
+	int nodes[12]{ 1,3,2, 4,2,3, 3,5,4, 6,4,5 };
+
+	
+	int ind = 0;
+	
+	for (int z = 0; z < 12; z+=3) {
+		K_glob[nodes[z] - 1][nodes[z] - 1] += K[ind][0][0];
+		K_glob[nodes[z + 1] - 1][nodes[z + 1] - 1] += K[ind][1][1];
+		K_glob[nodes[z + 2] - 1][nodes[z + 2] - 1] += K[ind][2][2];
+
+		K_glob[nodes[z + 1] - 1][nodes[z] - 1] += K[ind][1][0];
+		K_glob[nodes[z] - 1][nodes[z + 1] - 1] += K[ind][0][1];
+
+		K_glob[nodes[z + 2] - 1][nodes[z] - 1] += K[ind][2][0];
+		K_glob[nodes[z] - 1][nodes[z + 2] - 1] += K[ind][0][2];
+
+		K_glob[nodes[z + 1] - 1][nodes[z + 2] - 1] += K[ind][1][2];
+		K_glob[nodes[z + 2] - 1][nodes[z + 1] - 1] += K[ind][2][1];
+		ind += 1;
+	}
+	
+
+	std::cout << " matrix K_glob \n";
+	for (int i = 0; i < 6; i++)
+	{
+		for (int j = 0; j < 6; j++)
+			std::cout << K_glob[i][j] << "\t";
+		std::cout << std::endl;
+	}
+
+	ind = 0;
+	for (int z = 0; z < 12; z = z + 3) {
+		P_glob[nodes[z + 0] - 1] += Pq[ind][0] + Pg[ind][0]; 
+		P_glob[nodes[z + 1] - 1] += Pq[ind][1] + Pg[ind][1]; 
+		P_glob[nodes[z + 2] - 1] += Pq[ind][2] + Pg[ind][2]; 
+		ind += 1;
+	}
+
+	std::cout << " matrix P_glob \n";
+	for (int i = 0; i < 6; i++)
+	{
+		std::cout << P_glob[i] << "\t";
+		std::cout << std::endl;
+	}
+
+	float T[6];
+
+	solveLinearSystem(K_glob, P_glob, T);
+
+	std::cout << " matrix T \n";
+	for (int i = 0; i < 6; i++)
+	{
+		std::cout << T[i] << "\t";
+		std::cout << std::endl;
+	}
+
+	system("pause");
+	return 0;
+}
